@@ -1,54 +1,205 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+<p align="center">
+  <img src="assets/icon.svg" width="80" height="80" alt="RepoStatus icon">
+</p>
 
-# RepoStatus
+<h1 align="center">RepoStatus</h1>
 
-A native Rust + Iced dashboard for your local Git projects, with a compact terminal-inspired interface, monospace table rows, and keyboard shortcuts.
+<p align="center">Your local Git projects, at a glance.</p>
 
-## Run
+<p align="center">
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#using-repostatus">Usage</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#development">Development</a>
+</p>
 
-Install [Rust](https://rustup.rs/) (1.88 or newer) and Git, then:
+RepoStatus is a native desktop dashboard for tracking local Git repositories. See which projects need a pull, have commits ready to push, or contain uncommitted changes—without opening a terminal in every folder. Built with Rust and [Iced](https://iced.rs/), it combines a compact monospace interface with explicit Git actions and background checks.
+
+![RepoStatus dashboard showing synchronized, incoming, outgoing, and uncommitted repositories](docs/screenshots/dashboard.png)
+
+*Captured on macOS with isolated sample repositories and local remotes. `↓` counts incoming commits, `↑` counts outgoing commits, and `*` counts changed files.*
+
+## Features
+
+- **One dashboard for multiple repositories.** View paths, branches, status, and available actions together.
+- **Background updates.** Fetch and check repositories on startup, every 60 seconds, or on demand.
+- **Pull, commit, and push.** Fast-forward pulls, explicit commits, and pushes to the upstream displayed in the dashboard.
+- **Useful Git diagnostics.** Identify diverged branches, conflicts, detached HEAD, missing upstreams, and fetch failures.
+- **Keyboard shortcuts.** Add a project with `a`, refresh with `r`, and close dialogs with `Esc`.
+- **Persistent preferences.** Save your project list, window appearance, and resource stats visibility.
+- **Menu bar / system tray on macOS and Windows.** Keep checking repositories when the dashboard is hidden.
+
+## Getting started
+
+### Requirements
+
+- **Rust 1.88 or newer**, including Cargo. Install it with [rustup](https://rustup.rs/).
+- **Git** available on `PATH`.
+- A graphical desktop and working Git credentials for any private remotes.
+
+The project currently ships as source; no prebuilt releases are published. Build and run it locally:
 
 ```sh
-cargo run --release
+git clone https://github.com/NucleusBeast/repostatus.git
+cd repostatus
+cargo run --release --locked
 ```
 
-On Linux, the native window and folder picker require the usual X11/Wayland libraries and a working desktop portal (`xdg-desktop-portal` and a desktop-specific backend). macOS and Windows use native folder pickers.
+To build without launching:
 
-## Use
+```sh
+cargo build --release --locked
+```
 
-- **Add Project**: browse for an existing repository or enter its path. Subfolders resolve to the repository root; duplicates are rejected.
-- **Incoming**: remote commits need pulling. **Pull** fetches and uses `git pull --ff-only` when the working tree is clean and the branch can fast-forward.
-- **Outbound**: local commits or uncommitted files need attention. **Commit…** explicitly stages all changed/untracked files and commits with your message. **Push** sends committed changes to the displayed upstream. Committing and pushing are separate actions.
-- **Default**: a tracked branch has no incoming commits, outgoing commits, or local changes.
-- **Remove**: removes a project from the dashboard, preserving the repository and its files.
-- **Keyboard**: `a` adds a project, `r` refreshes, and `Esc` closes a dialog.
-- **Window transparency (macOS / Windows)**: open **[settings]** and adjust transparency from 0% (opaque) to 50%. Enable **Keep text opaque** to fade the dashboard background while keeping text and controls opaque; dialogs stay opaque for readability. Leave it unchecked to fade the whole window, including text and the title bar. Changes apply immediately. The slider saves on release, and the checkbox saves on toggle; both are restored on startup. **Reset to opaque** sets transparency to 0%.
-- **App stats**: the footer shows RepoStatus's CPU usage and resident memory in MiB, updated every 2 seconds. CPU usage is measured per core (100% means one fully used core and can exceed 100%). Git subprocesses are excluded. Toggle **Show CPU and memory usage** in **[settings]**; the preference is saved, and disabling it also stops stats collection. Stats are enabled by default.
-- **Refresh**: fetches remote updates and checks local changes. Checks also run on startup and every 60 seconds, in the background.
-- **Background operation (macOS / Windows)**: a RepoStatus icon appears in the macOS menu bar or Windows system tray. Closing the dashboard hides it and keeps repository checks and running Git operations active. On macOS, closing the window also removes the app from the Dock and app switcher. Left-clicking the tray icon toggles the dashboard: visible windows hide; hidden or minimized windows restore and receive focus. The Dock icon follows window visibility on macOS. Right-click opens the menu with **Toggle RepoStatus**, **Refresh repositories**, and **Quit RepoStatus**. If the tray icon cannot be created, the dashboard shows an error and closing it exits normally. On Linux, closing the window exits the app.
+The executable is `target/release/repostatus` on macOS and Linux, or `target\release\repostatus.exe` on Windows. Keep Git available on `PATH` when launching the executable.
 
-A project can show both Incoming and Outbound. Diverged branches, merge conflicts, detached HEAD, and missing upstreams are indicated explicitly. Resolve these in your normal Git workflow; the app never force-pushes, resets files, stashes changes, or creates automatic merge commits.
+### Platform behavior
 
-Git uses your existing SSH configuration and credential helpers. Terminal prompts are disabled so the UI stays responsive; configure credentials outside the app if a remote reports authentication errors. Operations have a 90-second timeout. Failed fetches show a warning alongside the last locally known status, rather than silently implying the remote is current. Failed actions show their Git error; Refresh rechecks the repository.
+| Capability | macOS | Windows | Linux |
+| --- | --- | --- | --- |
+| Dashboard and Git operations | Yes | Yes | Yes |
+| Folder picker | Native | Native | Desktop portal |
+| Menu bar / system tray | Yes | Yes | No |
+| Closing the window | Keeps running in background | Keeps running in background | Exits |
+| Window transparency | Yes | Yes | No |
+| CPU and memory stats | Yes | Yes | Yes |
 
-## Saved projects
+Linux requires the native libraries for an X11 or Wayland desktop. The folder picker also requires `xdg-desktop-portal` and a backend for your desktop environment. Build tools and package names vary by distribution.
 
-The project list is stored in `repostatus/projects.json` under the operating system's configuration directory:
+## Using RepoStatus
 
-- macOS: `~/Library/Application Support/repostatus/projects.json`
-- Linux: `~/.config/repostatus/projects.json`
-- Windows: `%APPDATA%\repostatus\projects.json`
+1. Select **[a] add** or press `a`.
+2. Browse for an existing Git repository, or enter its path. A subfolder resolves to its repository root; duplicate projects are rejected.
+3. Read the branch and status for each project. Hover over its status for incoming/outgoing commit counts, changed-file count, and upstream.
+4. Use the available actions, or select **[r] refresh** to fetch and recheck all projects.
 
-The same file also stores window transparency, the text opacity preference, and footer stats visibility. Existing project lists default to an opaque window and retain the whole-window fade behavior. Set `REPOSTATUS_CONFIG` to a custom JSON file path to use a separate project list and settings. An invalid configuration is reported and preserved for repair.
+### Reading repository status
+
+| Status | Meaning | Next step |
+| --- | --- | --- |
+| **Default** | Tracked branch with no incoming commits, outgoing commits, or local changes | No action needed |
+| **Incoming ↓N** | The upstream has commits your branch does not have | Pull when your working tree is clean and the branch can fast-forward |
+| **Outbound ↑N *M** | Local commits and/or changed files need attention | Commit changes, then push outgoing commits |
+| **Incoming+Outbound** | Both incoming commits and outgoing commits or local changes exist | Inspect the counts and resolve local changes or divergence as needed |
+| **No upstream** | The branch has no tracking branch | Configure its upstream in your normal Git workflow |
+
+Conflicts and detached HEAD are also shown explicitly. A failed fetch displays a warning alongside the last locally known state, so the dashboard may be out of date until fetching succeeds.
+
+### Git actions and safeguards
+
+| Action | Behavior |
+| --- | --- |
+| **Pull** | Fetches first, then runs `git pull --ff-only`. Requires a clean working tree, incoming commits, no outgoing commits, no conflicts, and an attached branch. |
+| **Commit** | Stages **all changed and untracked files** with `git add --all`, then commits with your message. Requires an attached branch without conflicts. Review files in your Git tools first if you need selective staging. |
+| **Push** | Fetches first, then pushes committed changes to the displayed upstream. Requires outgoing commits, a configured upstream, and no incoming commits or conflicts. |
+| **Remove [x]** | Removes a project from the dashboard after confirmation. Leaves the repository and its files on disk. |
+
+Committing and pushing are separate actions. RepoStatus never force-pushes, resets files, stashes changes, or creates automatic merge commits. Resolve conflicts, divergence, and branch setup with your usual Git tools. Individual Git commands time out after 90 seconds; failed actions display the Git error.
+
+### Background operation
+
+On macOS and Windows, closing the dashboard hides it while repository checks and running operations continue. Left-click the tray icon to hide or restore the dashboard. Right-click it to **Toggle RepoStatus**, **Refresh repositories**, or **Quit RepoStatus**.
+
+On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
+
+### Appearance and resource stats
+
+![RepoStatus settings dialog with transparency, text opacity, and resource stats controls](docs/screenshots/settings.png)
+
+Open **[settings]** to change:
+
+- **Transparency (macOS and Windows):** 0% is opaque; the maximum is 50%. **Keep text opaque** fades only the background. With it unchecked, the whole window fades, including text and the title bar. Dialogs remain opaque in background-only mode. **Reset to opaque** restores 0%.
+- **CPU and memory usage:** Show or hide app resource usage in the footer. Values update every two seconds; disabling the option stops collection. CPU usage is measured per core, so 100% means one fully used core and usage can exceed 100%. Memory is resident memory in MiB. Git subprocesses are excluded.
+
+Changes apply immediately. Transparency saves when the slider is released; checkboxes save when toggled. Settings are restored at startup.
+
+## Configuration
+
+Projects and preferences are stored together in a local JSON file:
+
+| Platform | Default path |
+| --- | --- |
+| macOS | `~/Library/Application Support/repostatus/projects.json` |
+| Linux | `~/.config/repostatus/projects.json` |
+| Windows | `%APPDATA%\repostatus\projects.json` |
+
+Example configuration (replace the paths with your repositories):
+
+```json
+{
+  "paths": ["/absolute/path/to/repository"],
+  "transparency": 0,
+  "keep_text_opaque": false,
+  "show_stats": true
+}
+```
+
+Transparency must be an integer from `0` to `50`. New installations default to an opaque window with resource stats enabled. Older project lists without appearance fields load with the same defaults.
+
+Set `REPOSTATUS_CONFIG` to use a separate project list and settings file:
+
+```sh
+# macOS / Linux
+REPOSTATUS_CONFIG=/absolute/path/to/projects.json cargo run --release --locked
+```
+
+```powershell
+# Windows PowerShell
+$env:REPOSTATUS_CONFIG = 'C:\path\to\projects.json'
+cargo run --release --locked
+```
+
+Invalid configuration is reported and preserved. Repair the file and restart the app to restore saving. Close the app before manually editing its configuration.
+
+## Troubleshooting
+
+**Authentication or permission errors:** RepoStatus uses your existing SSH configuration and Git credential helpers. Interactive credential prompts are disabled. Configure authentication in a terminal, verify that you can fetch the affected repository there, then refresh the dashboard.
+
+For GitHub HTTPS remotes, you can configure the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh auth login --hostname github.com --git-protocol https
+gh auth setup-git
+```
+
+This configures HTTPS credentials; an existing SSH remote still needs a working SSH key or must be changed to an HTTPS URL.
+
+**No upstream / Push unavailable:** Set the correct upstream in a terminal. For example, to publish the current branch to `origin` and track it:
+
+```sh
+git push -u origin HEAD
+```
+
+**Pull unavailable:** Check for uncommitted changes, outgoing commits, conflicts, or detached HEAD. Pull is enabled only when the branch can fast-forward safely.
+
+**Commit fails:** Check the displayed Git error. Git may require `user.name` and `user.email`, or a commit hook may have rejected the commit. Because staging happens before committing, files can remain staged after a failed commit.
+
+**Fetch warning / timeout:** Check network access and remote credentials. Local status remains visible, but remote counts can be stale. Refresh after resolving the problem.
+
+**Linux folder picker does not open:** Verify that a desktop portal and the appropriate backend are installed and running in your graphical session.
 
 ## Development
 
 ```sh
 cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
 ```
 
-Integration tests create isolated repositories and a local bare remote to exercise fetch, pull, commit, push, dirty/diverged branch protection, status parsing, and persistence. No network credentials or user repositories are needed.
+Integration tests create isolated repositories and a local bare remote to exercise fetch, pull, commit, push, dirty/diverged branch protection, status parsing, and persistence. They require Git, but no network credentials or user repositories.
 
-Built with [Iced 0.14](https://docs.rs/iced/0.14.0/). Created in [T3 Code](https://t3.codes).
+| Location | Purpose |
+| --- | --- |
+| `src/main.rs` | Dashboard, dialogs, keyboard handling, and application state |
+| `src/git.rs` | Git commands, status parsing, and action safeguards |
+| `src/storage.rs` | Configuration loading and persistence |
+| `src/appearance.rs` | Platform-specific window transparency |
+| `src/lifecycle.rs`, `src/tray.rs` | Window visibility and menu bar / tray integration |
+| `src/stats.rs` | App CPU and memory sampling |
+| `tests/git_workflow.rs` | Isolated Git workflow integration tests |
+
+Report bugs or propose improvements through [GitHub Issues](https://github.com/NucleusBeast/repostatus/issues). Include your OS, Rust and Git versions, reproduction steps, and the error shown by the app. Remove credentials and private repository details from logs and screenshots.
+
+## License and credits
+
+The package declares the **MIT** license in [Cargo.toml](Cargo.toml). Built with [Iced 0.14](https://docs.rs/iced/0.14.0/) and created in [T3 Code](https://t3.codes).
