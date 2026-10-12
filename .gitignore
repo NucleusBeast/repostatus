@@ -1,0 +1,21 @@
+# Rust build output (includes generated app bundles)
+/target/
+**/*.rs.bk
+
+# Packaged releases
+/dist/
+*.app/
+*.dmg
+*.msi
+*.exe
+
+# Operating system files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Editor temporary files
+*.swp
+*.swo
+*~
