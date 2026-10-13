@@ -187,6 +187,9 @@ git push -u origin HEAD
 
 ## Development
 
+To build signed macOS apps and Windows executables with GitHub Actions, see
+[the release setup and publishing guide](docs/releases.md).
+
 ```sh
 cargo fmt --check
 cargo clippy --locked --all-targets -- -D warnings
