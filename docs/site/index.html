@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="RepoStatus is a native desktop dashboard for your local Git projects. See incoming commits, outgoing commits, and uncommitted changes in one quiet, monospace interface.">
+  <meta name="theme-color" content="#111415">
+  <title>RepoStatus — Your local Git projects, at a glance.</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#overview">Skip to content</a>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="wordmark" href="#overview" aria-label="RepoStatus home"><span aria-hidden="true">$</span> repostatus<span class="cursor" aria-hidden="true">_</span></a>
+      <nav aria-label="Main navigation">
+        <a href="#features"><span class="dim">[1]</span> features</a>
+        <a href="#install"><span class="dim">[2]</span> install</a>
+        <a href="https://github.com/NucleusBeast/repostatus">github <span aria-hidden="true">↗</span></a>
+      </nav>
+      <button class="text-button theme-toggle" type="button" aria-label="Switch to light theme">[light]</button>
+    </header>
+
+    <main>
+      <section class="overview" id="overview" aria-labelledby="hero-title">
+        <div class="hero">
+          <div>
+            <h1 id="hero-title">Your local Git projects,<br><span class="green">at a glance.</span><span class="heading-cursor" aria-hidden="true">▌</span></h1>
+            <p class="hero-description">Less switching folders. More shipping.<br>One native dashboard for the repositories you work on.</p>
+            <div class="hero-actions">
+              <a class="primary-button" href="#install">[ get started <span aria-hidden="true">→</span> ]</a>
+              <a class="secondary-link" href="https://github.com/NucleusBeast/repostatus#using-repostatus">[ read the docs ]</a>
+            </div>
+          </div>
+          <div class="hero-note" aria-label="Project information">
+            <span><span class="green">●</span> local-first</span>
+            <span>built with Rust + Iced</span>
+            <span>macOS / Windows / Linux</span>
+          </div>
+        </div>
+
+        <div class="terminal" aria-label="Illustrative RepoStatus dashboard with sample repositories">
+          <div class="terminal-title"><span><span class="green">$ repostatus</span><span class="terminal-subtitle"> / local git projects</span></span><span class="sample-label">sample repositories</span></div>
+          <div class="dashboard-toolbar"><span class="muted">~/projects</span><button id="refresh-demo" class="text-button" type="button">[r] refresh preview</button></div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Sample repository statuses">
+            <table>
+              <thead><tr><th scope="col">#</th><th scope="col">PROJECT</th><th scope="col">PATH</th><th scope="col">BRANCH</th><th scope="col">STATUS</th></tr></thead>
+              <tbody>
+                <tr><td class="muted">01</td><th scope="row">dashboard</th><td class="muted">~/projects/dashboard</td><td class="muted">main</td><td class="green">Default</td></tr>
+                <tr><td class="muted">02</td><th scope="row">website</th><td class="muted">~/projects/website</td><td class="muted">main</td><td class="blue">Incoming ↓2</td></tr>
+                <tr><td class="muted">03</td><th scope="row">api-service</th><td class="muted">~/projects/api-service</td><td class="muted">main</td><td class="amber">Outbound ↑1 *0</td></tr>
+                <tr><td class="muted">04</td><th scope="row">design-system</th><td class="muted">~/projects/design-system</td><td class="muted">main</td><td class="amber">Outbound ↑0 *2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="terminal-footer"><div><span>4 projects</span><span class="blue">1 incoming</span><span class="amber">2 outbound</span></div><span id="demo-status" class="muted" role="status">auto 60s</span></div>
+        </div>
+        <div class="preview-caption"><span><span class="blue">↓</span> incoming commits <span class="amber">↑</span> outgoing commits <span class="amber">*</span> changed files</span><span>A little clarity. A lot less <code>cd</code>.</span></div>
+      </section>
+
+      <section class="features section-grid" id="features" aria-labelledby="features-title">
+        <div class="section-intro"><p class="section-number">01 / FEATURES</p><h2 id="features-title">Keep the big picture.<br><span class="muted">Stay in your flow.</span></h2><p>All the signal you need, in a compact interface that feels right at home beside your terminal.</p><a class="secondary-link" href="https://github.com/NucleusBeast/repostatus#using-repostatus">[ explore the workflow ↗ ]</a></div>
+        <div class="feature-list">
+          <article><span class="feature-symbol green" aria-hidden="true">[≡]</span><div><h3>Many repos. One view.</h3><p>Branches, incoming commits, outgoing commits, and local changes. See what needs attention without opening every folder.</p></div></article>
+          <article><span class="feature-symbol blue" aria-hidden="true">[↻]</span><div><h3>Checks in the background.</h3><p>Fetch on startup, every 60 seconds, or on demand. On macOS and Windows, keep it running in your menu bar or system tray.</p></div></article>
+          <article><span class="feature-symbol amber" aria-hidden="true">[±]</span><div><h3>Your changes. Your call.</h3><p>Pull with fast-forward only, commit all changed files with your message, then push separately. Every Git action is explicit.</p></div></article>
+          <article><span class="feature-symbol green" aria-hidden="true">[a]</span><div><h3>Small details that feel familiar.</h3><p>Keyboard shortcuts, light and dark themes, persistent preferences, and optional CPU and memory stats.</p></div></article>
+        </div>
+      </section>
+
+      <section class="install section-grid" id="install" aria-labelledby="install-title">
+        <div class="section-intro"><p class="section-number">02 / GET STARTED</p><h2 id="install-title">Three commands.<br><span class="green">All your projects.</span></h2><p>Build and run from source. Bring Rust 1.88+, Git, and your existing Git credentials.</p><a class="secondary-link" href="https://github.com/NucleusBeast/repostatus#getting-started">[ platform requirements ↗ ]</a></div>
+        <div>
+          <div class="install-terminal"><div class="install-title"><span class="muted">~/terminal</span><button class="text-button" id="copy-commands" type="button">[copy]</button></div><pre id="install-commands"><code>git clone https://github.com/NucleusBeast/repostatus.git
+cd repostatus
+cargo run --release --locked</code></pre><div class="command-footer"><span class="green" aria-hidden="true">›</span> Add a repository. See where you stand.</div></div>
+          <p class="install-note" id="copy-status" role="status">Source available · MIT licensed · No account required</p>
+        </div>
+      </section>
+
+      <aside class="closing-note"><span class="green" aria-hidden="true">$</span><p>Your repositories stay on your machine.<br><span class="muted">RepoStatus uses your installed Git and existing credentials.</span></p><a href="https://github.com/NucleusBeast/repostatus">[ view source ↗ ]</a></aside>
+    </main>
+    <footer class="site-footer"><span><span class="green">repostatus</span> / a quieter way to keep up</span><div><a href="https://github.com/NucleusBeast/repostatus/issues">[issues]</a><span class="shortcut-hint">[t] theme</span><span>Rust + Iced · MIT</span></div></footer>
+  </div>
+</body>
+</html>

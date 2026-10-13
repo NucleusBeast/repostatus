@@ -47,6 +47,10 @@ pub enum Action {
 /// Invoke Git directly (never through a shell), preserving credential helpers and SSH configuration.
 async fn git(path: &Path, args: &[&str]) -> Result<String, String> {
     let mut command = Command::new("git");
+    // GUI processes otherwise give console children their own visible window.
+    #[cfg(target_os = "windows")]
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+
     command
         .arg("-C")
         .arg(path)

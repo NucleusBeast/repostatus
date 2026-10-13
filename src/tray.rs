@@ -101,34 +101,6 @@ mod native {
     }
 
     fn icon() -> Result<Icon, tray_icon::BadIcon> {
-        // A crisp R glyph at tray size. macOS uses its alpha as a template so
-        // the system adapts it to light/dark menu bars; Windows gets a red tile.
-        let glyph = [
-            "11110", "10001", "10001", "11110", "10100", "10010", "10001",
-        ];
-        let mut rgba = vec![0; 32 * 32 * 4];
-        for y in 0..32usize {
-            for x in 0..32usize {
-                let pixel = &mut rgba[(y * 32 + x) * 4..][..4];
-                if cfg!(target_os = "windows") {
-                    let dx = 5usize.saturating_sub(x).max(x.saturating_sub(26));
-                    let dy = 5usize.saturating_sub(y).max(y.saturating_sub(26));
-                    if dx * dx + dy * dy <= 25 {
-                        pixel.copy_from_slice(&[220, 38, 38, 255]);
-                    }
-                }
-                if (8..23).contains(&x)
-                    && (5..26).contains(&y)
-                    && glyph[(y - 5) / 3].as_bytes()[(x - 8) / 3] == b'1'
-                {
-                    pixel.copy_from_slice(if cfg!(target_os = "macos") {
-                        &[0, 0, 0, 255]
-                    } else {
-                        &[255, 255, 255, 255]
-                    });
-                }
-            }
-        }
-        Icon::from_rgba(rgba, 32, 32)
+        Icon::from_rgba(crate::icon::rgba(32, cfg!(target_os = "macos")), 32, 32)
     }
 }

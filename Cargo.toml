@@ -29,6 +29,10 @@ windows-sys = { version = "0.61", features = ["Win32_UI_WindowsAndMessaging", "W
 [dev-dependencies]
 tempfile = "3"
 
+[build-dependencies]
+ico = "0.5"
+winresource = "0.1"
+
 [package.metadata.bundle]
 name = "RepoStatus"
 identifier = "com.nucleusbeast.repostatus"

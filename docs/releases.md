@@ -64,5 +64,13 @@ has been stapled and signature/Gatekeeper checks pass. If Apple's processing
 exceeds the 45-minute wait, the job fails; inspect the submission status before
 retrying.
 
+Stapling, ticket validation, and Gatekeeper assessment each get up to five
+attempts, waiting 10, 20, 30, and 40 seconds between attempts. Apple's ticket
+delivery service can drop a connection even after notarization reports
+`Accepted` (for example, `stapler validate` may report network error `-1005`
+and exit 68). The workflow still requires every check to pass; persistent
+failures stop the release. An isolated network failure does not imply that the
+Intel build or signing credentials are invalid.
+
 References: [Apple notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
 and [GitHub certificate installation](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications).

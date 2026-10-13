@@ -187,6 +187,18 @@ git push -u origin HEAD
 
 ## Development
 
+### Static website
+
+The project website lives in `docs/site/` and is plain HTML, CSS, and JavaScript, with no build step or dependencies. Open `docs/site/index.html` directly, or serve the site locally from the repository root:
+
+```sh
+python3 -m http.server 4173 --directory docs/site
+```
+
+Visit `http://localhost:4173`. The page includes light/dark themes, keyboard shortcuts (`1` for features, `2` for installation, `t` for theme, and `r` for the sample preview), and copyable installation commands. The dashboard contains illustrative sample data. To host it, upload the contents of `docs/site/` to any static host.
+
+### App development
+
 To build signed macOS apps and Windows executables with GitHub Actions, see
 [the release setup and publishing guide](docs/releases.md).
 

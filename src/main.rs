@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 use iced::{
     Alignment, Border, Color, Element, Fill, Font, Size, Subscription, Task, Theme,
     widget::{
@@ -12,6 +14,7 @@ use repostatus::{
 use std::{path::PathBuf, time::Duration};
 
 mod appearance;
+mod icon;
 mod lifecycle;
 mod reopen;
 mod stats;
@@ -33,6 +36,14 @@ fn main() -> iced::Result {
             min_size: Some(Size::new(980.0, 340.0)),
             exit_on_close_request: false,
             transparent: appearance::SUPPORTED,
+            icon: if cfg!(target_os = "windows") {
+                Some(
+                    iced::window::icon::from_rgba(icon::rgba(32, false), 32, 32)
+                        .expect("valid app icon"),
+                )
+            } else {
+                None
+            },
             ..Default::default()
         })
         .run()

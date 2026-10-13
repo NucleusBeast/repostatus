@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Apple's ticket delivery service can drop connections after notarization succeeds.
+# Keep every check mandatory, but retry before failing the release.
+retry_apple_check() {
+  local attempt status delay
+  for attempt in 1 2 3 4 5; do
+    if "$@"; then
+      return 0
+    else
+      status=$?
+    fi
+    if [[ "$attempt" == 5 ]]; then
+      echo "Apple check failed after $attempt attempts (exit $status): $*" >&2
+      return "$status"
+    fi
+    delay=$((attempt * 10))
+    echo "Apple check failed (exit $status); retrying in ${delay}s ($attempt/5): $*" >&2
+    sleep "$delay"
+  done
+}
+
 # Run on an ephemeral macOS GitHub-hosted runner after cargo bundle.
 for name in MACOS_CERTIFICATE_BASE64 MACOS_CERTIFICATE_PASSWORD \
   MACOS_SIGNING_IDENTITY APPLE_ID APPLE_TEAM_ID APPLE_APP_PASSWORD \
@@ -60,9 +80,9 @@ if [[ "$status" != Accepted || "$submit_exit" != 0 ]]; then
   exit 1
 fi
 
-xcrun stapler staple "$app"
-xcrun stapler validate "$app"
-spctl --assess --type execute --verbose=2 "$app"
+retry_apple_check xcrun stapler staple "$app"
+retry_apple_check xcrun stapler validate "$app"
+retry_apple_check spctl --assess --type execute --verbose=2 "$app"
 
 mkdir -p dist
 ditto -c -k --keepParent "$app" "dist/RepoStatus-macos-$RELEASE_ARCH.zip"
