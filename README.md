@@ -195,7 +195,7 @@ The project website lives in `docs/site/` and is plain HTML, CSS, and JavaScript
 python3 -m http.server 4173 --directory docs/site
 ```
 
-Visit `http://localhost:4173`. The page includes light/dark themes, keyboard shortcuts (`1` for features, `2` for installation, `t` for theme, and `r` for the sample preview), and copyable installation commands. The dashboard contains illustrative sample data. To host it, upload the contents of `docs/site/` to any static host.
+Visit `http://localhost:4173`. The page includes light/dark themes, keyboard shortcuts (`1` for features, `2` for installation, and `t` for theme), and copyable installation commands. Real app screenshots show the dashboard with sample repositories and the settings dialog; the dashboard screenshot follows the site's theme. Screenshot assets are included in `docs/site/assets/screenshots/`. To host it, upload the contents of `docs/site/` to any static host.
 
 ### App development
 

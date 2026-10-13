@@ -41,23 +41,13 @@
           </div>
         </div>
 
-        <div class="terminal" aria-label="Illustrative RepoStatus dashboard with sample repositories">
-          <div class="terminal-title"><span><span class="green">$ repostatus</span><span class="terminal-subtitle"> / local git projects</span></span><span class="sample-label">sample repositories</span></div>
-          <div class="dashboard-toolbar"><span class="muted">~/projects</span><button id="refresh-demo" class="text-button" type="button">[r] refresh preview</button></div>
-          <div class="table-scroll" tabindex="0" role="region" aria-label="Sample repository statuses">
-            <table>
-              <thead><tr><th scope="col">#</th><th scope="col">PROJECT</th><th scope="col">PATH</th><th scope="col">BRANCH</th><th scope="col">STATUS</th></tr></thead>
-              <tbody>
-                <tr><td class="muted">01</td><th scope="row">dashboard</th><td class="muted">~/projects/dashboard</td><td class="muted">main</td><td class="green">Default</td></tr>
-                <tr><td class="muted">02</td><th scope="row">website</th><td class="muted">~/projects/website</td><td class="muted">main</td><td class="blue">Incoming ↓2</td></tr>
-                <tr><td class="muted">03</td><th scope="row">api-service</th><td class="muted">~/projects/api-service</td><td class="muted">main</td><td class="amber">Outbound ↑1 *0</td></tr>
-                <tr><td class="muted">04</td><th scope="row">design-system</th><td class="muted">~/projects/design-system</td><td class="muted">main</td><td class="amber">Outbound ↑0 *2</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="terminal-footer"><div><span>4 projects</span><span class="blue">1 incoming</span><span class="amber">2 outbound</span></div><span id="demo-status" class="muted" role="status">auto 60s</span></div>
-        </div>
-        <div class="preview-caption"><span><span class="blue">↓</span> incoming commits <span class="amber">↑</span> outgoing commits <span class="amber">*</span> changed files</span><span>A little clarity. A lot less <code>cd</code>.</span></div>
+        <figure class="app-screenshot">
+          <a class="screenshot-link" href="assets/screenshots/dashboard.png" target="_blank" rel="noopener" aria-label="Open dashboard screenshot at full size">
+            <img id="dashboard-screenshot" src="assets/screenshots/dashboard.png" width="2160" height="1096" alt="RepoStatus in dark mode on macOS, showing four sample repositories with synchronized, incoming, outgoing, and uncommitted changes" fetchpriority="high">
+          </a>
+          <figcaption class="preview-caption"><span>Actual macOS app · sample repositories</span><a class="full-size-link" href="assets/screenshots/dashboard.png" target="_blank" rel="noopener">[ view full size ↗ ]</a></figcaption>
+        </figure>
+        <p class="status-legend"><span class="blue">↓</span> incoming commits <span class="amber">↑</span> outgoing commits <span class="amber">*</span> changed files</p>
       </section>
 
       <section class="features section-grid" id="features" aria-labelledby="features-title">
@@ -68,6 +58,16 @@
           <article><span class="feature-symbol amber" aria-hidden="true">[±]</span><div><h3>Your changes. Your call.</h3><p>Pull with fast-forward only, commit all changed files with your message, then push separately. Every Git action is explicit.</p></div></article>
           <article><span class="feature-symbol green" aria-hidden="true">[a]</span><div><h3>Small details that feel familiar.</h3><p>Keyboard shortcuts, light and dark themes, persistent preferences, and optional CPU and memory stats.</p></div></article>
         </div>
+      </section>
+
+      <section class="appearance section-grid" aria-labelledby="appearance-title">
+        <div class="section-intro"><p class="section-number">APPEARANCE / SETTINGS</p><h2 id="appearance-title">Make it feel<br><span class="green">like home.</span></h2><p>Choose Light, Dark, or System appearance. Adjust window transparency on macOS and Windows, and keep resource stats close at hand.</p><a class="secondary-link" href="https://github.com/NucleusBeast/repostatus#appearance-and-resource-stats">[ appearance settings ↗ ]</a></div>
+        <figure class="app-screenshot">
+          <a class="screenshot-link" href="assets/screenshots/settings.png" target="_blank" rel="noopener" aria-label="Open settings screenshot at full size">
+            <img src="assets/screenshots/settings.png" width="2160" height="1096" alt="RepoStatus settings showing Light, Dark, and System themes, transparency, keep text opaque, and CPU and memory usage controls" loading="lazy" decoding="async">
+          </a>
+          <figcaption class="preview-caption"><span>Actual app settings · dark mode</span><a href="assets/screenshots/settings.png" target="_blank" rel="noopener">[ view full size ↗ ]</a></figcaption>
+        </figure>
       </section>
 
       <section class="install section-grid" id="install" aria-labelledby="install-title">

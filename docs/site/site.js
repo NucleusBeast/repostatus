@@ -9,6 +9,12 @@ function setTheme(theme) {
   themeButton.textContent = `[${next}]`;
   themeButton.setAttribute("aria-label", `Switch to ${next} theme`);
   document.querySelector('meta[name="theme-color"]').content = theme === "dark" ? "#111415" : "#f6f7f2";
+  const screenshot = document.querySelector("#dashboard-screenshot");
+  const screenshotPath = `assets/screenshots/dashboard${theme === "light" ? "-light" : ""}.png`;
+  screenshot.src = screenshotPath;
+  screenshot.alt = `RepoStatus in ${theme} mode on macOS, showing four sample repositories with synchronized, incoming, outgoing, and uncommitted changes`;
+  screenshot.closest("a").href = screenshotPath;
+  document.querySelector(".full-size-link").href = screenshotPath;
 }
 
 try {
@@ -20,19 +26,6 @@ themeButton.addEventListener("click", () => {
   const theme = root.dataset.theme === "dark" ? "light" : "dark";
   setTheme(theme);
   try { localStorage.setItem("repostatus-site-theme", theme); } catch { /* Optional preference. */ }
-});
-
-const refreshButton = document.querySelector("#refresh-demo");
-const demoStatus = document.querySelector("#demo-status");
-refreshButton.addEventListener("click", () => {
-  refreshButton.disabled = true;
-  refreshButton.textContent = "[checking…]";
-  demoStatus.textContent = "checking sample repositories…";
-  window.setTimeout(() => {
-    refreshButton.disabled = false;
-    refreshButton.textContent = "[r] refresh preview";
-    demoStatus.textContent = "preview checked · just now";
-  }, 650);
 });
 
 document.querySelector("#copy-commands").addEventListener("click", async (event) => {
@@ -60,5 +53,4 @@ document.addEventListener("keydown", (event) => {
   const target = { "1": "features", "2": "install" }[key];
   if (target) { event.preventDefault(); window.location.hash = target; }
   if (key === "t") themeButton.click();
-  if (key === "r" && !refreshButton.disabled) refreshButton.click();
 });
