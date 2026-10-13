@@ -1,5 +1,6 @@
 # Rust build output (includes generated app bundles)
 /target/
+/.wrangler/
 **/*.rs.bk
 
 # Packaged releases
