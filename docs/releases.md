@@ -1,6 +1,7 @@
 # Building releases
 
-The `Release builds` GitHub Actions workflow builds four archives:
+The `Release builds` GitHub Actions workflow runs only when manually triggered
+and builds four archives. Commits and tag pushes do not start it.
 
 - `RepoStatus-macos-arm64.zip`: signed and notarized Apple Silicon app.
 - `RepoStatus-macos-x64.zip`: signed and notarized Intel Mac app.
@@ -38,22 +39,29 @@ the secret if that happens.
 Push the workflow to the default branch, then open Actions → Release builds →
 Run workflow. This runs tests, builds all four targets, and signs/notarizes the
 Mac apps. Download the archives from the completed run's Artifacts section.
-Manual runs do not create a GitHub release. Test the downloaded apps on their
-respective platforms before publishing.
+Manual runs on a branch do not create a GitHub release. Test the downloaded apps
+on their respective platforms before publishing.
 
 ## Versioned release
 
 Set the package version in `Cargo.toml` and update `Cargo.lock`, commit the
-changes, then push a matching tag. For the current version:
+changes, then push a matching tag. Pushing the tag does not start a build.
+For the current version:
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Tags must match `v` followed by the package version exactly. Once all four builds
-succeed, Actions creates a draft GitHub release and attaches the archives. Review
-its notes and publish it in GitHub when ready. Reruns can replace draft assets;
+Tags must match `v` followed by the package version exactly. Manually start the
+workflow for that tag using the GitHub CLI:
+
+```sh
+gh workflow run release.yml --ref v0.1.0
+```
+
+Once all four builds succeed, Actions creates a draft GitHub release and attaches
+the archives. Review its notes and publish it in GitHub when ready. Reruns can replace draft assets;
 the workflow refuses to replace assets on an already published release.
 
 ## Notarization failures

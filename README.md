@@ -7,6 +7,7 @@
 <p align="center">Your local Git projects, at a glance.</p>
 
 <p align="center">
+  <a href="https://github.com/NucleusBeast/repostatus/releases/latest">Downloads</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#using-repostatus">Usage</a> ·
   <a href="#configuration">Configuration</a> ·
@@ -35,13 +36,30 @@ RepoStatus is a native desktop dashboard for tracking local Git repositories. Se
 
 ## Getting started
 
-### Requirements
+### Download a release
+
+Download a prebuilt app from the [latest release](https://github.com/NucleusBeast/repostatus/releases/latest), or browse [all releases](https://github.com/NucleusBeast/repostatus/releases).
+
+| Platform | Archive |
+| --- | --- |
+| macOS Apple Silicon | `RepoStatus-macos-arm64.zip` |
+| macOS Intel | `RepoStatus-macos-x64.zip` |
+| Windows ARM64 | `RepoStatus-windows-arm64.zip` |
+| Windows x64 | `RepoStatus-windows-x64.zip` |
+
+Extract the archive and launch RepoStatus. On macOS, move `RepoStatus.app` to Applications; on Windows, run `RepoStatus.exe`. Git must be installed and available on `PATH`.
+
+**Only the macOS apps are signed and notarized. Windows executables are unsigned.**
+
+### Build from source
+
+#### Requirements
 
 - **Rust 1.88 or newer**, including Cargo. Install it with [rustup](https://rustup.rs/).
 - **Git** available on `PATH`.
 - A graphical desktop and working Git credentials for any private remotes.
 
-The project currently ships as source; no prebuilt releases are published. Build and run it locally:
+Build and run it locally:
 
 ```sh
 git clone https://github.com/NucleusBeast/repostatus.git
