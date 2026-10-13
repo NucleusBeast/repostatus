@@ -237,3 +237,29 @@ async fn merge_conflicts_block_actions_and_preserve_files() {
     );
     assert_eq!(fs::read(f.a.join("initial.txt")).unwrap(), before);
 }
+
+#[test]
+fn theme_preferences_roundtrip_and_project_updates_preserve_them() {
+    use storage::ThemePreference;
+
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("projects.json");
+    fs::write(&path, r#"{"paths":["/example/project"]}"#).unwrap();
+    let mut config = storage::load_config(&path).unwrap();
+    assert_eq!(config.theme, ThemePreference::System);
+    for preference in [
+        ThemePreference::Light,
+        ThemePreference::Dark,
+        ThemePreference::System,
+    ] {
+        config.theme = preference;
+        storage::save_config(&path, &config).unwrap();
+        assert_eq!(storage::load_config(&path).unwrap().theme, preference);
+        storage::save(&path, vec![]).unwrap();
+        assert_eq!(storage::load_config(&path).unwrap().theme, preference);
+    }
+    let invalid = r#"{"paths":[],"theme":"unknown"}"#;
+    fs::write(&path, invalid).unwrap();
+    assert!(storage::load_config(&path).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(), invalid);
+}

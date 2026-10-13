@@ -19,6 +19,10 @@ RepoStatus is a native desktop dashboard for tracking local Git repositories. Se
 
 *Captured on macOS with isolated sample repositories and local remotes. `↓` counts incoming commits, `↑` counts outgoing commits, and `*` counts changed files.*
 
+![RepoStatus dashboard in light mode](docs/screenshots/dashboard-light.png)
+
+*Light appearance uses the same dashboard and Git actions.*
+
 ## Features
 
 - **One dashboard for multiple repositories.** View paths, branches, status, and available actions together.
@@ -26,7 +30,7 @@ RepoStatus is a native desktop dashboard for tracking local Git repositories. Se
 - **Pull, commit, and push.** Fast-forward pulls, explicit commits, and pushes to the upstream displayed in the dashboard.
 - **Useful Git diagnostics.** Identify diverged branches, conflicts, detached HEAD, missing upstreams, and fetch failures.
 - **Keyboard shortcuts.** Add a project with `a`, refresh with `r`, and close dialogs with `Esc`.
-- **Persistent preferences.** Save your project list, window appearance, and resource stats visibility.
+- **Persistent preferences.** Save your project list, Light/Dark/System theme, window appearance, and resource stats visibility.
 - **Menu bar / system tray on macOS and Windows.** Keep checking repositories when the dashboard is hidden.
 
 ## Getting started
@@ -100,13 +104,15 @@ Committing and pushing are separate actions. RepoStatus never force-pushes, rese
 
 On macOS and Windows, closing the dashboard hides it while repository checks and running operations continue. Left-click the tray icon to hide or restore the dashboard. Right-click it to **Toggle RepoStatus**, **Refresh repositories**, or **Quit RepoStatus**.
 
-On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
+On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. Opening RepoStatus again from Finder, Launchpad, or the Dock shows and focuses the existing dashboard, including when it is hidden or minimized. Tray clicks still toggle the dashboard. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
 
 ### Appearance and resource stats
 
-![RepoStatus settings dialog with transparency, text opacity, and resource stats controls](docs/screenshots/settings.png)
+![RepoStatus settings dialog with Light, Dark, and System theme options, transparency, and resource stats controls](docs/screenshots/settings.png)
 
 Open **[settings]** to change:
+
+- **Theme:** Choose **Light**, **Dark**, or **System**. Changes apply immediately and are saved. System is the default and follows your desktop appearance, including changes while RepoStatus is running.
 
 - **Transparency (macOS and Windows):** 0% is opaque; the maximum is 50%. **Keep text opaque** fades only the background. With it unchecked, the whole window fades, including text and the title bar. Dialogs remain opaque in background-only mode. **Reset to opaque** restores 0%.
 - **CPU and memory usage:** Show or hide app resource usage in the footer. Values update every two seconds; disabling the option stops collection. CPU usage is measured per core, so 100% means one fully used core and usage can exceed 100%. Memory is resident memory in MiB. Git subprocesses are excluded.
@@ -130,11 +136,12 @@ Example configuration (replace the paths with your repositories):
   "paths": ["/absolute/path/to/repository"],
   "transparency": 0,
   "keep_text_opaque": false,
-  "show_stats": true
+  "show_stats": true,
+  "theme": "system"
 }
 ```
 
-Transparency must be an integer from `0` to `50`. New installations default to an opaque window with resource stats enabled. Older project lists without appearance fields load with the same defaults.
+Transparency must be an integer from `0` to `50`. The theme accepts `"light"`, `"dark"`, or `"system"`. New installations default to System appearance, an opaque window, and enabled resource stats. Older project lists without appearance fields load with the same defaults.
 
 Set `REPOSTATUS_CONFIG` to use a separate project list and settings file:
 
@@ -193,8 +200,10 @@ Integration tests create isolated repositories and a local bare remote to exerci
 | `src/main.rs` | Dashboard, dialogs, keyboard handling, and application state |
 | `src/git.rs` | Git commands, status parsing, and action safeguards |
 | `src/storage.rs` | Configuration loading and persistence |
+| `src/theme.rs` | Theme resolution and dashboard color palettes |
 | `src/appearance.rs` | Platform-specific window transparency |
 | `src/lifecycle.rs`, `src/tray.rs` | Window visibility and menu bar / tray integration |
+| `src/reopen.rs` | macOS app reopening restores the existing window |
 | `src/stats.rs` | App CPU and memory sampling |
 | `tests/git_workflow.rs` | Isolated Git workflow integration tests |
 

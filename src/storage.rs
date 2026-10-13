@@ -4,6 +4,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemePreference {
+    Light,
+    Dark,
+    #[default]
+    System,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub paths: Vec<PathBuf>,
@@ -13,6 +22,8 @@ pub struct Config {
     pub keep_text_opaque: bool,
     #[serde(default = "default_show_stats")]
     pub show_stats: bool,
+    #[serde(default)]
+    pub theme: ThemePreference,
 }
 
 fn default_show_stats() -> bool {
@@ -26,6 +37,7 @@ impl Default for Config {
             transparency: 0,
             keep_text_opaque: false,
             show_stats: default_show_stats(),
+            theme: ThemePreference::default(),
         }
     }
 }
