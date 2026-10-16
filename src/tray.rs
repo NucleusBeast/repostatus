@@ -101,6 +101,6 @@ mod native {
     }
 
     fn icon() -> Result<Icon, tray_icon::BadIcon> {
-        Icon::from_rgba(crate::icon::rgba(32, cfg!(target_os = "macos")), 32, 32)
+        Icon::from_rgba(crate::icon::rgba(32), 32, 32)
     }
 }

@@ -13,7 +13,7 @@ fn main() {
             .join("repostatus.ico");
     let mut directory = ico::IconDir::new(ico::ResourceType::Icon);
     for size in [16, 32, 48, 64, 128, 256] {
-        let image = ico::IconImage::from_rgba_data(size, size, icon::rgba(size, false));
+        let image = ico::IconImage::from_rgba_data(size, size, icon::rgba(size));
         directory.add_entry(ico::IconDirEntry::encode(&image).expect("encode app icon"));
     }
     directory

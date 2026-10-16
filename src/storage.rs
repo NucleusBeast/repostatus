@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -23,7 +24,21 @@ pub struct Config {
     #[serde(default = "default_show_stats")]
     pub show_stats: bool,
     #[serde(default)]
+    pub close_behavior: CloseBehavior,
+    #[serde(default)]
     pub theme: ThemePreference,
+    #[serde(default)]
+    pub project_app: Option<String>,
+    #[serde(default)]
+    pub project_apps: BTreeMap<PathBuf, String>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CloseBehavior {
+    #[default]
+    Hide,
+    Quit,
 }
 
 fn default_show_stats() -> bool {
@@ -37,7 +52,10 @@ impl Default for Config {
             transparency: 0,
             keep_text_opaque: false,
             show_stats: default_show_stats(),
+            close_behavior: CloseBehavior::default(),
             theme: ThemePreference::default(),
+            project_app: None,
+            project_apps: BTreeMap::new(),
         }
     }
 }

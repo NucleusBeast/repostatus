@@ -180,23 +180,36 @@ fn transparency_settings_preserve_projects_and_read_legacy_configs() {
     assert_eq!(config.transparency, 0);
     assert!(!config.keep_text_opaque);
     assert!(config.show_stats);
+    assert_eq!(config.close_behavior, storage::CloseBehavior::Hide);
+    assert!(config.project_app.is_none());
+    assert!(config.project_apps.is_empty());
     let original = config.paths.clone();
     config.transparency = 25;
     config.keep_text_opaque = true;
     config.show_stats = false;
+    config.close_behavior = storage::CloseBehavior::Quit;
+    config.project_app = Some("/Applications/Visual Studio Code.app".into());
+    config
+        .project_apps
+        .insert(config.paths[0].clone(), "other-editor".into());
     storage::save_config(&path, &config).unwrap();
     let restored = storage::load_config(&path).unwrap();
     assert_eq!(restored.transparency, 25);
     assert!(restored.keep_text_opaque);
     assert!(!restored.show_stats);
+    assert_eq!(restored.close_behavior, storage::CloseBehavior::Quit);
     assert_eq!(restored.paths, original);
+    assert_eq!(restored.project_app, config.project_app);
+    assert_eq!(restored.project_apps, config.project_apps);
 
     storage::save(&path, vec![]).unwrap();
     let restored = storage::load_config(&path).unwrap();
     assert!(restored.paths.is_empty());
+    assert_eq!(restored.project_app, config.project_app);
     assert_eq!(restored.transparency, 25);
     assert!(restored.keep_text_opaque);
     assert!(!restored.show_stats);
+    assert_eq!(restored.close_behavior, storage::CloseBehavior::Quit);
 
     config.transparency = 51;
     assert!(storage::save_config(&path, &config).is_err());

@@ -33,6 +33,7 @@ RepoStatus is a native desktop dashboard for tracking local Git repositories. Se
 - **Keyboard shortcuts.** Add a project with `a`, refresh with `r`, and close dialogs with `Esc`.
 - **Persistent preferences.** Save your project list, Light/Dark/System theme, window appearance, and resource stats visibility.
 - **Menu bar / system tray on macOS and Windows.** Keep checking repositories when the dashboard is hidden.
+- **Start at login.** Optionally open RepoStatus automatically when you sign in.
 
 ## Getting started
 
@@ -82,9 +83,10 @@ The executable is `target/release/repostatus` on macOS and Linux, or `target\rel
 | Dashboard and Git operations | Yes | Yes | Yes |
 | Folder picker | Native | Native | Desktop portal |
 | Menu bar / system tray | Yes | Yes | No |
-| Closing the window | Keeps running in background | Keeps running in background | Exits |
+| Closing the window | Hide or quit (Settings) | Hide or quit (Settings) | Exits |
 | Window transparency | Yes | Yes | No |
 | CPU and memory stats | Yes | Yes | Yes |
+| Start at login | Yes | Yes | Yes |
 
 Linux requires the native libraries for an X11 or Wayland desktop. The folder picker also requires `xdg-desktop-portal` and a backend for your desktop environment. Build tools and package names vary by distribution.
 
@@ -94,6 +96,8 @@ Linux requires the native libraries for an X11 or Wayland desktop. The folder pi
 2. Browse for an existing Git repository, or enter its path. A subfolder resolves to its repository root; duplicate projects are rejected.
 3. Read the branch and status for each project. Hover over its status for incoming/outgoing commit counts, changed-file count, and upstream.
 4. Use the available actions, or select **[r] refresh** to fetch and recheck all projects.
+
+Click a project's path to open its folder. By default this uses your system's file manager. To use an editor or another app, open **[settings] → open projects with**, select **[choose app]**, or enter an app name or executable path and select **[apply]**. On macOS you can choose an `.app` bundle, such as Visual Studio Code; on Windows or Linux choose its executable. This sets the fallback app and is saved across restarts. Select **[use system default]** to reset it. To choose a different app for an individual project, click **[app]** beside its path. Choose an app or enter its name/path and click **[apply]**. Each project remembers its own choice; **[use default]** removes that override and uses the fallback app.
 
 ### Reading repository status
 
@@ -120,7 +124,7 @@ Committing and pushing are separate actions. RepoStatus never force-pushes, rese
 
 ### Background operation
 
-On macOS and Windows, closing the dashboard hides it while repository checks and running operations continue. Left-click the tray icon to hide or restore the dashboard. Right-click it to **Toggle RepoStatus**, **Refresh repositories**, or **Quit RepoStatus**.
+On macOS and Windows, closing the dashboard hides it by default while repository checks and running operations continue. In **[settings]**, choose **Hide window** or **Quit app** under **when closing the window**. The choice is saved automatically. Left-click the tray icon to hide or restore the dashboard. Right-click it to **Toggle RepoStatus**, **Refresh repositories**, or **Quit RepoStatus**.
 
 On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. Opening RepoStatus again from Finder, Launchpad, or the Dock shows and focuses the existing dashboard, including when it is hidden or minimized. Tray clicks still toggle the dashboard. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
 
@@ -134,8 +138,12 @@ Open **[settings]** to change:
 
 - **Transparency (macOS and Windows):** 0% is opaque; the maximum is 50%. **Keep text opaque** fades only the background. With it unchecked, the whole window fades, including text and the title bar. Dialogs remain opaque in background-only mode. **Reset to opaque** restores 0%.
 - **CPU and memory usage:** Show or hide app resource usage in the footer. Values update every two seconds; disabling the option stops collection. CPU usage is measured per core, so 100% means one fully used core and usage can exceed 100%. Memory is resident memory in MiB. Git subprocesses are excluded.
+- **When closing the window (macOS and Windows):** Choose **Hide window** (default) to keep the app running in the background, or **Quit app** to exit. If the tray is unavailable, closing always quits so the app remains accessible.
+- **Start RepoStatus at login:** Open the app automatically when you sign in. Off by default. The toggle adds or removes a per-user macOS LaunchAgent, Windows Run registry entry, or Linux desktop autostart entry. Move the app to its permanent location before enabling this; if you move it later, turn the option off and on again to update its path. Turn it off before deleting the app.
 
 Changes apply immediately. Transparency saves when the slider is released; checkboxes save when toggled. Settings are restored at startup.
+
+The start-at-login setting is stored in the operating system's startup registration rather than the JSON configuration file.
 
 ## Configuration
 
@@ -155,11 +163,14 @@ Example configuration (replace the paths with your repositories):
   "transparency": 0,
   "keep_text_opaque": false,
   "show_stats": true,
+  "close_behavior": "hide",
+  "project_app": null,
+  "project_apps": {},
   "theme": "system"
 }
 ```
 
-Transparency must be an integer from `0` to `50`. The theme accepts `"light"`, `"dark"`, or `"system"`. New installations default to System appearance, an opaque window, and enabled resource stats. Older project lists without appearance fields load with the same defaults.
+Transparency must be an integer from `0` to `50`. The theme accepts `"light"`, `"dark"`, or `"system"`. Close behavior accepts `"hide"` or `"quit"`; older configurations default to `"hide"`. New installations default to System appearance, an opaque window, and enabled resource stats. Older project lists without appearance fields load with the same defaults.
 
 Set `REPOSTATUS_CONFIG` to use a separate project list and settings file:
 

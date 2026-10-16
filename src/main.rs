@@ -17,6 +17,7 @@ mod appearance;
 mod icon;
 mod lifecycle;
 mod reopen;
+mod startup;
 mod stats;
 mod theme;
 mod tray;
@@ -37,10 +38,7 @@ fn main() -> iced::Result {
             exit_on_close_request: false,
             transparent: appearance::SUPPORTED,
             icon: if cfg!(target_os = "windows") {
-                Some(
-                    iced::window::icon::from_rgba(icon::rgba(32, false), 32, 32)
-                        .expect("valid app icon"),
-                )
+                Some(iced::window::icon::from_rgba(icon::rgba(32), 32, 32).expect("valid app icon"))
             } else {
                 None
             },
@@ -73,6 +71,7 @@ enum Dialog {
     Settings,
     Commit(PathBuf),
     Remove(PathBuf),
+    ProjectApp(PathBuf),
 }
 struct App {
     projects: Vec<Project>,
@@ -86,6 +85,13 @@ struct App {
     transparency: u8,
     keep_text_opaque: bool,
     show_stats: bool,
+    close_behavior: storage::CloseBehavior,
+    project_app: Option<String>,
+    project_apps: std::collections::BTreeMap<PathBuf, String>,
+    project_app_input: String,
+    start_at_login: Option<bool>,
+    startup_busy: bool,
+    startup_error: Option<String>,
     stats: Option<stats::Snapshot>,
     theme_preference: storage::ThemePreference,
     system_theme: iced::theme::Mode,
@@ -107,6 +113,9 @@ enum Message {
     TransparencyChanged(u8),
     KeepTextOpaque(bool),
     ShowStats(bool),
+    CloseBehaviorSelected(storage::CloseBehavior),
+    StartAtLogin(bool),
+    StartupUpdated(Result<bool, String>),
     StatsUpdated(Option<stats::Snapshot>),
     ApplyTransparency(Option<iced::window::Id>),
     TransparencyApplied(Result<(), String>),
@@ -119,6 +128,14 @@ enum Message {
     Input(String),
     SubmitAdd,
     Added(Result<PathBuf, String>),
+    OpenProject(PathBuf),
+    ConfigureProjectApp(PathBuf),
+    ProjectAppInput(String),
+    SaveProjectApp,
+    ChooseProjectApp,
+    ProjectAppPicked(Option<PathBuf>, Option<PathBuf>),
+    ResetProjectApp,
+    ProjectOpened(Result<(), String>),
     CloseDialog,
     RequestRemove(PathBuf),
     Remove(PathBuf),
@@ -162,6 +179,13 @@ impl App {
             transparency: saved.transparency,
             keep_text_opaque: saved.keep_text_opaque,
             show_stats: saved.show_stats,
+            close_behavior: saved.close_behavior,
+            project_app_input: saved.project_app.clone().unwrap_or_default(),
+            project_app: saved.project_app,
+            project_apps: saved.project_apps,
+            start_at_login: None,
+            startup_busy: false,
+            startup_error: None,
             stats: None,
             theme_preference: saved.theme,
             system_theme: iced::theme::Mode::None,
@@ -179,6 +203,13 @@ impl App {
 
     fn colors(&self) -> theme::Colors {
         theme::Colors::for_theme(&self.theme())
+    }
+
+    fn opener(&self, path: &std::path::Path) -> Option<&str> {
+        self.project_apps
+            .get(path)
+            .map(String::as_str)
+            .or(self.project_app.as_deref())
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -225,6 +256,10 @@ impl App {
         Task::batch(tasks)
     }
 
+    fn hide_on_close(&self) -> bool {
+        self.tray_ready && self.close_behavior == storage::CloseBehavior::Hide
+    }
+
     fn persist(&mut self) {
         if let Some(config) = &self.config {
             if let Err(e) = storage::save_config(
@@ -234,7 +269,10 @@ impl App {
                     transparency: self.transparency,
                     keep_text_opaque: self.keep_text_opaque,
                     show_stats: self.show_stats,
+                    close_behavior: self.close_behavior,
                     theme: self.theme_preference,
+                    project_app: self.project_app.clone(),
+                    project_apps: self.project_apps.clone(),
                 },
             ) {
                 self.notice = Some(e);
@@ -265,14 +303,41 @@ impl App {
                 };
             }
             Message::Settings => {
+                self.project_app_input = self.project_app.clone().unwrap_or_default();
                 self.dialog = Dialog::Settings;
                 self.dialog_error = None;
+                if !self.startup_busy {
+                    self.startup_busy = true;
+                    self.startup_error = None;
+                    return Task::perform(async { startup::is_enabled() }, Message::StartupUpdated);
+                }
+            }
+            Message::StartAtLogin(enabled)
+                if !self.startup_busy && self.start_at_login.is_some() =>
+            {
+                self.startup_busy = true;
+                self.startup_error = None;
+                return Task::perform(
+                    async move { startup::set_enabled(enabled) },
+                    Message::StartupUpdated,
+                );
+            }
+            Message::StartupUpdated(result) => {
+                self.startup_busy = false;
+                match result {
+                    Ok(enabled) => self.start_at_login = Some(enabled),
+                    Err(error) => self.startup_error = Some(error),
+                }
             }
             Message::ThemeSelected(preference) => {
                 self.theme_preference = preference;
                 self.persist();
             }
             Message::SystemThemeChanged(mode) => self.system_theme = mode,
+            Message::CloseBehaviorSelected(behavior) => {
+                self.close_behavior = behavior;
+                self.persist();
+            }
             Message::ShowStats(enabled) => {
                 self.show_stats = enabled;
                 self.stats = None;
@@ -306,7 +371,7 @@ impl App {
                 Err(error) => self.notice = Some(error),
             },
             Message::CloseWindow(id) => {
-                if self.tray_ready {
+                if self.hide_on_close() {
                     return lifecycle::hide(id).map(Message::DockVisibilityChanged);
                 }
                 return iced::exit();
@@ -417,6 +482,9 @@ impl App {
             Message::RequestRemove(path) => self.dialog = Dialog::Remove(path),
             Message::Remove(path) => {
                 self.projects.retain(|p| p.path != path || p.busy.is_some());
+                if !self.projects.iter().any(|p| p.path == path) {
+                    self.project_apps.remove(&path);
+                }
                 self.persist();
                 self.dialog = Dialog::None;
             }
@@ -467,6 +535,86 @@ impl App {
                     }
                 }
             }
+            Message::ProjectAppInput(value) => self.project_app_input = value,
+            Message::ConfigureProjectApp(path) => {
+                self.project_app_input = self.project_apps.get(&path).cloned().unwrap_or_default();
+                self.dialog = Dialog::ProjectApp(path);
+                self.dialog_error = None;
+            }
+            Message::SaveProjectApp => {
+                let app = match self.project_app_input.trim() {
+                    "" => None,
+                    app => Some(app.to_owned()),
+                };
+                self.project_app_input = app.clone().unwrap_or_default();
+                if let Dialog::ProjectApp(path) = &self.dialog {
+                    if let Some(app) = app {
+                        self.project_apps.insert(path.clone(), app);
+                    } else {
+                        self.project_apps.remove(path);
+                    }
+                } else {
+                    self.project_app = app;
+                }
+                self.persist();
+            }
+            Message::ChooseProjectApp => {
+                let project = match &self.dialog {
+                    Dialog::ProjectApp(path) => Some(path.clone()),
+                    _ => None,
+                };
+                return Task::perform(
+                    async {
+                        let picker =
+                            rfd::AsyncFileDialog::new().set_title("Choose an app to open projects");
+                        #[cfg(target_os = "macos")]
+                        let picker = picker.set_directory("/Applications");
+                        picker.pick_file().await.map(|file| file.path().to_owned())
+                    },
+                    move |app| Message::ProjectAppPicked(project.clone(), app),
+                );
+            }
+            Message::ProjectAppPicked(project, Some(path)) => {
+                let current_project = match &self.dialog {
+                    Dialog::ProjectApp(path) => Some(path.clone()),
+                    Dialog::Settings => None,
+                    _ => return Task::none(),
+                };
+                if current_project != project {
+                    return Task::none();
+                }
+                self.project_app_input = path.to_string_lossy().into_owned();
+                return self.update(Message::SaveProjectApp);
+            }
+            Message::ResetProjectApp => {
+                self.project_app_input.clear();
+                return self.update(Message::SaveProjectApp);
+            }
+            Message::OpenProject(path) => {
+                let app = self.opener(&path).map(str::to_owned);
+                return Task::perform(
+                    async move {
+                        tokio::task::spawn_blocking(move || {
+                            let result = match &app {
+                                Some(app) => open::with(&path, app),
+                                None => open::that(&path),
+                            };
+                            result.map_err(|error| {
+                                format!(
+                                    "Could not open {}{}: {error}",
+                                    full_display_path(&path),
+                                    app.as_ref()
+                                        .map_or_else(String::new, |app| format!(" with {app}"))
+                                )
+                            })
+                        })
+                        .await
+                        .unwrap_or_else(|error| Err(format!("Could not open project: {error}")))
+                    },
+                    Message::ProjectOpened,
+                );
+            }
+            Message::ProjectOpened(Err(error)) => self.notice = Some(error),
             Message::Dismiss => self.notice = None,
             _ => {}
         }
@@ -542,16 +690,22 @@ impl App {
                 .height(Fill),
             );
         }
-        let table = container(table).width(Fill).height(Fill).style(move |_| {
-            panel(
-                if background_only {
-                    Color::TRANSPARENT
-                } else {
-                    colors.bg
-                },
-                colors,
-            )
-        });
+        // Container borders do not reserve layout space; inset the rows so their
+        // backgrounds cannot paint over the table outline.
+        let table = container(table)
+            .padding(1)
+            .width(Fill)
+            .height(Fill)
+            .style(move |_| {
+                panel(
+                    if background_only {
+                        Color::TRANSPARENT
+                    } else {
+                        colors.bg
+                    },
+                    colors,
+                )
+            });
         let mut content = column![header].spacing(10);
         if let Some(notice) = &self.notice {
             content = content.push(
@@ -589,7 +743,7 @@ impl App {
         .spacing(16)
         .align_y(Alignment::Center);
         if self.show_stats {
-            footer = footer.push(tooltip(
+            footer = footer.push(dashboard_tooltip(
                 text(self.stats.map_or_else(|| "CPU — · RAM —".into(), |snapshot| snapshot.label()))
                     .size(11)
                     .color(colors.muted),
@@ -601,10 +755,10 @@ impl App {
             footer.push(widget::Space::new().width(Fill)).push(
                 text(if busy > 0 {
                     format!("checking {busy} · auto 60s")
-                } else if self.tray_ready {
+                } else if self.hide_on_close() {
                     "auto 60s · close window to keep running".into()
                 } else {
-                    "auto 60s · esc closes dialog".into()
+                    "auto 60s · close window to quit".into()
                 })
                 .size(11)
                 .color(colors.muted),
@@ -625,18 +779,40 @@ impl App {
         if matches!(self.dialog, Dialog::None) {
             base.into()
         } else {
-            let modal = container(scrollable(self.dialog_view()).height(iced::Length::Shrink))
+            let dialog: Element<'_, Message> = if matches!(self.dialog, Dialog::Settings) {
+                column![
+                    row![
+                        mono("settings").size(16).color(colors.green),
+                        widget::Space::new().width(Fill),
+                        action_button("[esc] close", colors.muted)
+                            .on_press_maybe((!self.adding).then_some(Message::CloseDialog)),
+                    ]
+                    .align_y(Alignment::Center),
+                    scrollable(self.dialog_view()).height(iced::Length::Shrink),
+                ]
+                .spacing(12)
+                .into()
+            } else {
+                scrollable(self.dialog_view())
+                    .height(iced::Length::Shrink)
+                    .into()
+            };
+            let modal = container(dialog)
                 .padding(18)
                 .width(520)
                 .style(move |_| panel(colors.header, colors));
-            let overlay =
-                container(modal)
-                    .center_x(Fill)
-                    .center_y(Fill)
-                    .style(|_| container::Style {
-                        background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.65).into()),
-                        ..Default::default()
-                    });
+            let overlay = container(modal)
+                .padding(if matches!(self.dialog, Dialog::Settings) {
+                    [24, 0]
+                } else {
+                    [0, 0]
+                })
+                .center_x(Fill)
+                .center_y(Fill)
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.65).into()),
+                    ..Default::default()
+                });
             stack![base, widget::opaque(overlay)].into()
         }
     }
@@ -687,13 +863,24 @@ impl App {
         if !busy {
             remove = remove.on_press(Message::RequestRemove(p.path.clone()));
         }
+        let path = button(text(compact(&display_path(&p.path), 28)).size(12))
+            .padding(0)
+            .style(move |theme, status| button::Style {
+                text_color: if matches!(status, button::Status::Hovered | button::Status::Pressed) {
+                    colors.blue
+                } else {
+                    colors.muted
+                },
+                ..button::text(theme, status)
+            })
+            .on_press(Message::OpenProject(p.path.clone()));
         let main = row![
             text(format!("{:02}", index + 1)).size(12).color(colors.muted).width(24),
-            container(tooltip(text(compact(&p.name(), 20)).size(13).color(colors.ink), mono(p.name()), tooltip::Position::Top)).width(iced::Length::FillPortion(2)),
-            container(tooltip(text(compact(&display_path(&p.path), 34)).size(12).color(colors.muted), mono(p.path.to_string_lossy().into_owned()), tooltip::Position::Top)).width(iced::Length::FillPortion(3)),
-            container(tooltip(text(compact(s.map_or("—", |s| s.branch.as_str()), 13)).size(12).color(colors.muted), mono(s.map_or("No branch", |s| s.branch.as_str())), tooltip::Position::Top)).width(110),
-            container(tooltip(text(label).size(12).color(color), mono(s.map_or_else(|| "Status unavailable".into(), |s| format!("{} incoming commits / {} outgoing commits / {} changed files\nupstream: {}", s.behind, s.ahead, s.changed, s.upstream.as_deref().unwrap_or("none")))), tooltip::Position::Top)).width(155),
-            row![pull, push, tooltip(remove, mono("Remove from list; keep files"), tooltip::Position::Top)].spacing(6).width(173),
+            container(dashboard_tooltip(text(compact(&p.name(), 20)).size(13).color(colors.ink), mono(p.name()), tooltip::Position::Top)).width(iced::Length::FillPortion(2)),
+            container(row![dashboard_tooltip(path, mono(format!("{}\nOpen in {}", full_display_path(&p.path), self.opener(&p.path).unwrap_or("default app"))), tooltip::Position::Top), dashboard_tooltip(action_button("[app]", colors.blue).on_press(Message::ConfigureProjectApp(p.path.clone())), mono("Choose an app for this project"), tooltip::Position::Top)].spacing(6).align_y(Alignment::Center)).width(iced::Length::FillPortion(3)),
+            container(dashboard_tooltip(text(compact(s.map_or("—", |s| s.branch.as_str()), 13)).size(12).color(colors.muted), mono(s.map_or("No branch", |s| s.branch.as_str())), tooltip::Position::Top)).width(110),
+            container(dashboard_tooltip(text(label).size(12).color(color), mono(s.map_or_else(|| "Status unavailable".into(), |s| format!("{} incoming commits / {} outgoing commits / {} changed files\nupstream: {}", s.behind, s.ahead, s.changed, s.upstream.as_deref().unwrap_or("none")))), tooltip::Position::Top)).width(155),
+            row![pull, push, dashboard_tooltip(remove, mono("Remove from list; keep files"), tooltip::Position::Top)].spacing(6).width(173),
         ].spacing(12).align_y(Alignment::Center);
         let mut lines = column![main].spacing(4);
         if let Some(s) = s {
@@ -753,10 +940,11 @@ impl App {
         let colors = self.colors();
         let mut body = column![].spacing(12);
         let heading = match &self.dialog {
-            Dialog::Settings => Some(("settings", colors.green)),
+            Dialog::Settings => None,
             Dialog::Add => Some(("+ add project", colors.green)),
             Dialog::Commit(_) => Some(("+ commit changes", colors.amber)),
             Dialog::Remove(_) => Some(("- remove project?", colors.red)),
+            Dialog::ProjectApp(_) => Some(("open project with", colors.blue)),
             Dialog::None => None,
         };
         if let Some((title, color)) = heading {
@@ -830,6 +1018,97 @@ impl App {
                             .color(colors.muted),
                     );
                 }
+                body = body.push(mono("when closing the window").color(colors.ink));
+                if tray::SUPPORTED {
+                    body = body
+                        .push(
+                            row![
+                                widget::radio(
+                                    "Hide window",
+                                    storage::CloseBehavior::Hide,
+                                    Some(self.close_behavior),
+                                    Message::CloseBehaviorSelected,
+                                )
+                                .text_size(12),
+                                widget::radio(
+                                    "Quit app",
+                                    storage::CloseBehavior::Quit,
+                                    Some(self.close_behavior),
+                                    Message::CloseBehaviorSelected,
+                                )
+                                .text_size(12),
+                            ]
+                            .spacing(16),
+                        )
+                        .push(
+                            mono("Hide keeps checks running. Restore from the tray or menu bar.")
+                                .color(colors.muted),
+                        );
+                    if !self.tray_ready {
+                        body = body.push(
+                            mono("The tray is unavailable, so closing the window will quit.")
+                                .color(colors.muted),
+                        );
+                    }
+                } else {
+                    body = body.push(
+                        mono("Closing quits the app. Hiding requires macOS or Windows.")
+                            .color(colors.muted),
+                    );
+                }
+                body = body
+                    .push(mono("open projects with").color(colors.ink))
+                    .push(
+                        mono(format!(
+                            "Current: {}",
+                            self.project_app.as_deref().unwrap_or("System default")
+                        ))
+                        .color(colors.muted),
+                    )
+                    .push(
+                        text_input("App name or executable path", &self.project_app_input)
+                            .size(12)
+                            .padding(8)
+                            .style(input_style)
+                            .on_input(Message::ProjectAppInput)
+                            .on_submit(Message::SaveProjectApp),
+                    )
+                    .push(
+                        row![
+                            action_button("[choose app]", colors.ink)
+                                .on_press(Message::ChooseProjectApp),
+                            action_button("[apply]", colors.green)
+                                .on_press(Message::SaveProjectApp),
+                            action_button("[use system default]", colors.muted)
+                                .on_press(Message::ResetProjectApp),
+                        ]
+                        .spacing(12),
+                    )
+                    .push(
+                        mono("Default for projects without their own app. Use [app] beside a path to override.")
+                            .color(colors.muted),
+                    )
+                    .push(mono("startup").color(colors.ink))
+                    .push(
+                        checkbox(self.start_at_login.unwrap_or(false))
+                            .label("Start RepoStatus at login")
+                            .text_size(12)
+                            .on_toggle_maybe(
+                                (!self.startup_busy && self.start_at_login.is_some())
+                                    .then_some(Message::StartAtLogin),
+                            ),
+                    )
+                    .push(
+                        mono(if self.startup_busy {
+                            "Updating startup setting…"
+                        } else {
+                            "Open automatically when you sign in to your computer."
+                        })
+                        .color(colors.muted),
+                    );
+                if let Some(error) = &self.startup_error {
+                    body = body.push(mono(error).color(colors.red));
+                }
                 body = body
                     .push(mono("footer").color(colors.ink))
                     .push(
@@ -840,6 +1119,40 @@ impl App {
                     )
                     .push(
                         mono("App usage updates every 2 seconds. Saved automatically.")
+                            .color(colors.muted),
+                    );
+            }
+            Dialog::ProjectApp(path) => {
+                body = body
+                    .push(mono(full_display_path(path)).color(colors.ink))
+                    .push(
+                        mono(format!(
+                            "Current: {}",
+                            self.opener(path).unwrap_or("System default")
+                        ))
+                        .color(colors.muted),
+                    )
+                    .push(
+                        text_input("App name or executable path", &self.project_app_input)
+                            .size(12)
+                            .padding(8)
+                            .style(input_style)
+                            .on_input(Message::ProjectAppInput)
+                            .on_submit(Message::SaveProjectApp),
+                    )
+                    .push(
+                        row![
+                            action_button("[choose app]", colors.ink)
+                                .on_press(Message::ChooseProjectApp),
+                            action_button("[apply]", colors.green)
+                                .on_press(Message::SaveProjectApp),
+                            action_button("[use default]", colors.muted)
+                                .on_press(Message::ResetProjectApp),
+                        ]
+                        .spacing(12),
+                    )
+                    .push(
+                        mono("Saved for this project. Use default removes its override.")
                             .color(colors.muted),
                     );
             }
@@ -902,7 +1215,7 @@ impl App {
             }
             Dialog::Remove(path) => {
                 body = body
-                    .push(mono(path.to_string_lossy().into_owned()).color(colors.ink))
+                    .push(mono(full_display_path(path)).color(colors.ink))
                     .push(
                         mono("Removes the list entry. Repository files stay on disk.")
                             .color(colors.muted),
@@ -917,23 +1230,38 @@ impl App {
         if let Some(error) = &self.dialog_error {
             body = body.push(mono(error).color(colors.red));
         }
-        body.push(
-            action_button(
-                if matches!(self.dialog, Dialog::Settings) {
-                    "[esc] close"
-                } else {
-                    "[esc] cancel"
-                },
-                colors.muted,
-            )
-            .on_press_maybe((!self.adding).then_some(Message::CloseDialog)),
-        )
-        .into()
+        if !matches!(self.dialog, Dialog::Settings) {
+            body = body.push(
+                action_button(
+                    if matches!(self.dialog, Dialog::ProjectApp(_)) {
+                        "[esc] close"
+                    } else {
+                        "[esc] cancel"
+                    },
+                    colors.muted,
+                )
+                .on_press_maybe((!self.adding).then_some(Message::CloseDialog)),
+            );
+        }
+        body.into()
     }
 }
 
 fn mono<'a>(value: impl text::IntoFragment<'a>) -> widget::Text<'a> {
     text(value).font(Font::MONOSPACE).size(12)
+}
+fn dashboard_tooltip<'a>(
+    content: impl Into<Element<'a, Message>>,
+    description: impl Into<Element<'a, Message>>,
+    position: tooltip::Position,
+) -> tooltip::Tooltip<'a, Message> {
+    tooltip(content, description, position)
+        .padding(8)
+        .gap(6)
+        .style(|theme| {
+            let colors = theme::Colors::for_theme(theme);
+            panel(colors.header, colors)
+        })
 }
 fn panel(background: Color, colors: theme::Colors) -> container::Style {
     container::Style {
@@ -986,12 +1314,33 @@ fn input_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
     }
 }
 fn display_path(path: &std::path::Path) -> String {
+    if cfg!(target_os = "windows") {
+        return full_display_path(path);
+    }
     if let Some(home) = dirs::home_dir()
         && let Ok(suffix) = path.strip_prefix(home)
     {
         return format!("~/{}", suffix.display());
     }
     path.display().to_string()
+}
+fn full_display_path(path: &std::path::Path) -> String {
+    let value = path.to_string_lossy();
+    if cfg!(target_os = "windows") {
+        windows_display_path(&value)
+    } else {
+        value.into_owned()
+    }
+}
+fn windows_display_path(value: &str) -> String {
+    // canonicalize() adds a verbatim prefix on Windows; keep it out of the UI.
+    if let Some(suffix) = value.strip_prefix(r"\\?\UNC\") {
+        return format!("//{}", suffix.replace('\\', "/"));
+    }
+    value
+        .strip_prefix(r"\\?\")
+        .unwrap_or(value)
+        .replace('\\', "/")
 }
 fn compact(value: &str, max: usize) -> String {
     if value.chars().count() <= max {
@@ -1014,12 +1363,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn theme_selection_persists_and_system_changes_preserve_explicit_choices() {
-        let temp = tempfile::TempDir::new().unwrap();
-        let config_path = temp.path().join("projects.json");
-        let mut app = App {
+    fn windows_paths_use_forward_slashes_and_preserve_roots() {
+        for (path, expected) in [
+            (r"C:\Users\name\repo", "C:/Users/name/repo"),
+            (r"\\?\C:\Users\name\repo", "C:/Users/name/repo"),
+            ("D:/projects/repo", "D:/projects/repo"),
+            (r"\\?\C:\", "C:/"),
+            (r"\\server\share\repo", "//server/share/repo"),
+            (r"\\?\UNC\server\share\repo", "//server/share/repo"),
+        ] {
+            assert_eq!(windows_display_path(path), expected);
+        }
+    }
+
+    #[test]
+    fn home_directory_display_matches_platform() {
+        let home = dirs::home_dir().unwrap();
+        let path = home.join("projects").join("repo");
+        if cfg!(target_os = "windows") {
+            assert_eq!(display_path(&path), full_display_path(&path));
+            assert!(!display_path(&path).starts_with('~'));
+        } else {
+            assert_eq!(display_path(&path), "~/projects/repo");
+            assert_eq!(full_display_path(&path), path.to_string_lossy());
+        }
+    }
+
+    fn settings_app(config_path: PathBuf) -> App {
+        App {
             projects: vec![],
-            config: Some(config_path.clone()),
+            config: Some(config_path),
             notice: None,
             dialog: Dialog::Settings,
             input: String::new(),
@@ -1029,10 +1402,158 @@ mod tests {
             transparency: 25,
             keep_text_opaque: true,
             show_stats: false,
+            close_behavior: storage::CloseBehavior::default(),
+            project_app: None,
+            project_apps: std::collections::BTreeMap::new(),
+            project_app_input: String::new(),
+            start_at_login: None,
+            startup_busy: false,
+            startup_error: None,
             stats: None,
             theme_preference: storage::ThemePreference::System,
             system_theme: iced::theme::Mode::Light,
-        };
+        }
+    }
+
+    #[test]
+    fn project_app_overrides_are_independent_and_persist() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join("projects.json");
+        let mut app = settings_app(config_path.clone());
+        let first = temp.path().join("first");
+        let second = temp.path().join("second");
+        let _ = app.update(Message::ProjectAppInput("global-editor".into()));
+        let _ = app.update(Message::SaveProjectApp);
+        for (path, editor) in [(&first, "editor-one"), (&second, "editor-two")] {
+            let _ = app.update(Message::ConfigureProjectApp(path.clone()));
+            let _ = app.update(Message::ProjectAppInput(editor.into()));
+            let _ = app.update(Message::SaveProjectApp);
+        }
+        assert_eq!(app.opener(&first), Some("editor-one"));
+        assert_eq!(app.opener(&second), Some("editor-two"));
+        assert_eq!(
+            app.opener(&temp.path().join("third")),
+            Some("global-editor")
+        );
+        let _ = app.view();
+        let saved = storage::load_config(&config_path).unwrap();
+        assert_eq!(
+            saved.project_apps.get(&first).map(String::as_str),
+            Some("editor-one")
+        );
+        assert_eq!(
+            saved.project_apps.get(&second).map(String::as_str),
+            Some("editor-two")
+        );
+
+        // A picker result from another project cannot overwrite the active project.
+        let _ = app.update(Message::ProjectAppPicked(
+            Some(first.clone()),
+            Some(PathBuf::from("wrong-editor")),
+        ));
+        assert_eq!(app.opener(&second), Some("editor-two"));
+        let _ = app.update(Message::ConfigureProjectApp(first.clone()));
+        let _ = app.update(Message::ResetProjectApp);
+        assert_eq!(app.opener(&first), Some("global-editor"));
+        assert_eq!(app.opener(&second), Some("editor-two"));
+        let saved = storage::load_config(&config_path).unwrap();
+        assert!(!saved.project_apps.contains_key(&first));
+        assert_eq!(saved.project_app.as_deref(), Some("global-editor"));
+    }
+
+    #[test]
+    fn project_app_persists_and_can_return_to_system_default() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join("projects.json");
+        let mut app = settings_app(config_path.clone());
+        let chosen = "/Applications/Visual Studio Code.app";
+        let _ = app.update(Message::ProjectAppPicked(None, Some(PathBuf::from(chosen))));
+        assert_eq!(app.project_app.as_deref(), Some(chosen));
+        assert_eq!(
+            storage::load_config(&config_path)
+                .unwrap()
+                .project_app
+                .as_deref(),
+            Some(chosen)
+        );
+        let _ = app.update(Message::ProjectAppPicked(None, None));
+        assert_eq!(app.project_app.as_deref(), Some(chosen));
+        let _ = app.update(Message::ProjectAppInput("  editor  ".into()));
+        assert_eq!(app.project_app.as_deref(), Some(chosen));
+        let _ = app.update(Message::SaveProjectApp);
+        assert_eq!(
+            storage::load_config(&config_path)
+                .unwrap()
+                .project_app
+                .as_deref(),
+            Some("editor")
+        );
+        let _ = app.update(Message::ResetProjectApp);
+        assert!(
+            storage::load_config(&config_path)
+                .unwrap()
+                .project_app
+                .is_none()
+        );
+        assert!(app.project_app_input.is_empty());
+        let _ = app.view();
+    }
+
+    #[test]
+    fn close_behavior_persists_and_hiding_requires_a_tray() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("projects.json");
+        let mut app = settings_app(path.clone());
+        assert_eq!(app.close_behavior, storage::CloseBehavior::Hide);
+        for behavior in [storage::CloseBehavior::Quit, storage::CloseBehavior::Hide] {
+            let _ = app.update(Message::CloseBehaviorSelected(behavior));
+            assert_eq!(
+                storage::load_config(&path).unwrap().close_behavior,
+                behavior
+            );
+            app.tray_ready = true;
+            assert_eq!(
+                app.hide_on_close(),
+                behavior == storage::CloseBehavior::Hide
+            );
+            app.tray_ready = false;
+            assert!(!app.hide_on_close());
+        }
+    }
+
+    #[test]
+    fn startup_toggle_waits_for_success_and_preserves_state_on_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut app = settings_app(temp.path().join("projects.json"));
+        let _ = app.update(Message::Settings);
+        assert!(app.startup_busy);
+        let _ = app.update(Message::StartupUpdated(Ok(false)));
+        assert_eq!(app.start_at_login, Some(false));
+        assert!(!app.startup_busy);
+
+        let _ = app.update(Message::StartAtLogin(true));
+        assert!(app.startup_busy);
+        assert_eq!(app.start_at_login, Some(false));
+        let _ = app.update(Message::StartAtLogin(false));
+        assert!(app.startup_busy);
+        let _ = app.update(Message::StartupUpdated(Err("Access denied".into())));
+        assert_eq!(app.start_at_login, Some(false));
+        assert_eq!(app.startup_error.as_deref(), Some("Access denied"));
+        assert!(!app.startup_busy);
+
+        let _ = app.update(Message::StartAtLogin(true));
+        assert!(app.startup_error.is_none());
+        let _ = app.update(Message::StartupUpdated(Ok(true)));
+        assert_eq!(app.start_at_login, Some(true));
+        assert!(!app.startup_busy);
+        let _ = app.view();
+    }
+
+    #[test]
+    fn theme_selection_persists_and_system_changes_preserve_explicit_choices() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let config_path = temp.path().join("projects.json");
+        let mut app = settings_app(config_path.clone());
         for (preference, expected) in [
             (storage::ThemePreference::Dark, Theme::Dark),
             (storage::ThemePreference::Light, Theme::Light),
