@@ -49,15 +49,15 @@ changes, then push a matching tag. Pushing the tag does not start a build.
 For the current version:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 Tags must match `v` followed by the package version exactly. Manually start the
 workflow for that tag using the GitHub CLI:
 
 ```sh
-gh workflow run release.yml --ref v0.1.0
+gh workflow run release.yml --ref v0.1.1
 ```
 
 Once all four builds succeed, Actions creates a draft GitHub release and attaches

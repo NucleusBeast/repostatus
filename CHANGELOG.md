@@ -1,9 +1,8 @@
 # Changelog
 
-Notable changes to RepoStatus are recorded here. Changes after the latest tagged
-release, including current working-tree changes, appear under Unreleased.
+Notable changes to RepoStatus are recorded here, grouped by version.
 
-## Unreleased
+## [0.1.1] - 2026-10-16
 
 ### Added
 
@@ -12,6 +11,9 @@ release, including current working-tree changes, appear under Unreleased.
 - Optional start at login on macOS, Windows, and Linux, controlled from Settings
   through the operating system's per-user startup registration.
 - Clickable project paths that open repository folders in the system's default app.
+- Saved default and per-project app choices for opening repository folders in an
+  editor or another app, with options to restore the system default or inherit
+  the default app.
 
 ### Changed
 
@@ -22,8 +24,8 @@ release, including current working-tree changes, appear under Unreleased.
 - Tray icons, Windows window icons, and Windows executable icons use a black R
   glyph on a transparent background.
 - Release builds run manually through GitHub Actions.
-- README documents release downloads, opening project folders, and start-at-login
-  behavior.
+- README documents release downloads, project app choices, close behavior, and
+  start-at-login behavior.
 
 ## [0.1.0] - 2026-10-13
 
@@ -49,4 +51,5 @@ release, including current working-tree changes, appear under Unreleased.
 - Usage, configuration, troubleshooting, and release documentation.
 - Automated tests for Git workflows, configuration persistence, and app behavior.
 
+[0.1.1]: https://github.com/NucleusBeast/repostatus/releases/tag/v0.1.1
 [0.1.0]: https://github.com/NucleusBeast/repostatus/releases/tag/v0.1.0
