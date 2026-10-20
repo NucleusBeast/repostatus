@@ -22,7 +22,14 @@ mod stats;
 mod theme;
 mod tray;
 
-fn main() -> iced::Result {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Keep the guard alive until the event loop exits. A second Windows launch
+    // signals the existing dashboard and exits before creating any UI or tray.
+    #[cfg(target_os = "windows")]
+    let Some(_instance) = reopen::Instance::acquire()? else {
+        return Ok(());
+    };
+
     iced::application(App::new, App::update, App::view)
         .title("RepoStatus · Git Projects")
         .theme(App::theme)
@@ -44,7 +51,8 @@ fn main() -> iced::Result {
             },
             ..Default::default()
         })
-        .run()
+        .run()?;
+    Ok(())
 }
 
 struct Project {
@@ -1119,6 +1127,10 @@ impl App {
                     )
                     .push(
                         mono("App usage updates every 2 seconds. Saved automatically.")
+                            .color(colors.muted),
+                    )
+                    .push(
+                        mono(concat!("RepoStatus · Version ", env!("CARGO_PKG_VERSION")))
                             .color(colors.muted),
                     );
             }

@@ -126,7 +126,7 @@ Committing and pushing are separate actions. RepoStatus never force-pushes, rese
 
 On macOS and Windows, closing the dashboard hides it by default while repository checks and running operations continue. In **[settings]**, choose **Hide window** or **Quit app** under **when closing the window**. The choice is saved automatically. Left-click the tray icon to hide or restore the dashboard. Right-click it to **Toggle RepoStatus**, **Refresh repositories**, or **Quit RepoStatus**.
 
-On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. Opening RepoStatus again from Finder, Launchpad, or the Dock shows and focuses the existing dashboard, including when it is hidden or minimized. Tray clicks still toggle the dashboard. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
+On macOS, the app also leaves the Dock and app switcher while hidden and returns when restored. Opening RepoStatus again on macOS or Windows shows and focuses the existing dashboard, including when it is hidden or minimized. Windows keeps one instance per login session. Tray clicks still toggle the dashboard. If tray creation fails, an error is shown and closing the window exits normally. On Linux, closing the window exits the app.
 
 ### Appearance and resource stats
 
@@ -237,7 +237,7 @@ Integration tests create isolated repositories and a local bare remote to exerci
 | `src/theme.rs` | Theme resolution and dashboard color palettes |
 | `src/appearance.rs` | Platform-specific window transparency |
 | `src/lifecycle.rs`, `src/tray.rs` | Window visibility and menu bar / tray integration |
-| `src/reopen.rs` | macOS app reopening restores the existing window |
+| `src/reopen.rs` | macOS and Windows app reopening restores the existing window |
 | `src/stats.rs` | App CPU and memory sampling |
 | `tests/git_workflow.rs` | Isolated Git workflow integration tests |
 

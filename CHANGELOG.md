@@ -2,6 +2,17 @@
 
 Notable changes to RepoStatus are recorded here, grouped by version.
 
+## [Unreleased]
+
+### Added
+
+- App version in Settings, taken from the package version.
+
+### Fixed
+
+- Opening RepoStatus again on Windows restores the existing dashboard instead
+  of starting another instance, including when hidden in the tray or minimized.
+
 ## [0.1.1] - 2026-10-16
 
 ### Added
